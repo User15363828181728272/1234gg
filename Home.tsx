@@ -1,4 +1,3 @@
-
 import React, { useContext, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Download, Info, Zap, ShieldCheck, Play, Share2, Copy, CheckCircle } from 'lucide-react';
@@ -53,29 +52,49 @@ export const Home: React.FC<HomeProps> = ({
     setTimeout(() => setShowCopied(false), 2000);
   };
 
-   // Memperbaiki filter media untuk hanya satu MP4 360p dan satu MP3 Audio
+  // Fungsi untuk memaksa download agar tidak redirect ke player browser
+  const handleDownload = async (downloadUrl: string, filename: string) => {
+    try {
+      const response = await fetch(downloadUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+    } catch (err) {
+      // Fallback jika fetch gagal (CORS)
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.target = '_blank';
+      link.download = filename;
+      link.click();
+    }
+  };
+
+  // Filter Media: Hanya MP4 360p (MP4 Only)
   const filteredMedias = (() => {
     if (!videoInfo?.medias) return [];
+    
+    // Mencari MP4 360p
+    const mp4_360 = videoInfo.medias.find((m: any) => 
+      m.type === 'video' && 
+      m.extension === 'mp4' && 
+      (m.qualityLabel === '360p' || m.quality === '360p')
+    );
 
-    if (activeTab === 'video') {
-      const mp4_360 = videoInfo.medias.find((m: any) => 
-        m.type === 'video' && 
-        m.extension === 'mp4' && 
-        (m.qualityLabel === '360p' || m.quality === '360p')
-      );
-      return mp4_360 ? [mp4_360] : videoInfo.medias.filter((m: any) => m.type === 'video').slice(0, 1);
-    } else {
-      const mp3 = videoInfo.medias.find((m: any) => 
-        m.extension === 'mp3' || (m.type === 'audio' && m.extension !== 'opus')
-      );
-      return mp3 ? [mp3] : [];
-    }
+    // Jika 360p tidak ada, ambil video MP4 pertama yang tersedia
+    const fallback = videoInfo.medias.find((m: any) => m.type === 'video' && m.extension === 'mp4');
+    
+    return mp4_360 ? [mp4_360] : (fallback ? [fallback] : []);
   })();
-
 
   return (
     <div className="space-y-8 md:space-y-32 pb-12 md:pb-32">
-      {/* High-End Clean Hero */}
       <section className="relative">
         <div className="max-w-5xl">
           <motion.div 
@@ -111,7 +130,6 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       </section>
 
-      {/* Clean Industrial Search Bar */}
       <section className="relative z-20">
         <div className="max-w-5xl mx-auto">
           <motion.div 
@@ -188,23 +206,21 @@ export const Home: React.FC<HomeProps> = ({
 
               <div className="lg:col-span-7 studio-card p-0.5 md:p-1 border-slate-100 overflow-hidden">
                 <div className="flex p-1 md:p-2 bg-slate-50/50 border-b border-slate-100 rounded-t-[23px] md:rounded-t-[31px]">
-                  {(['video', 'audio'] as const).map(tab => (
-                    <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2 md:py-4 rounded-lg md:rounded-2xl text-[8px] md:text-[11px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === tab ? 'bg-white text-yt-red shadow-lg shadow-black/5' : 'text-slate-400 hover:text-slate-600'}`}>
-                      {tab === 'video' ? 'MP4 Video' : 'MP3 Audio'}
-                    </button>
-                  ))}
+                   <button className="flex-1 py-2 md:py-4 rounded-lg md:rounded-2xl text-[8px] md:text-[11px] font-black uppercase tracking-[0.2em] bg-white text-yt-red shadow-lg shadow-black/5">
+                      MP4 VIDEO ONLY
+                   </button>
                 </div>
 
                 <div className="p-2 md:p-8 space-y-1.5 md:space-y-3 max-h-[300px] md:max-h-[500px] overflow-y-auto">
                   {filteredMedias.length > 0 ? filteredMedias.map((item: any, i: number) => (
                     <div key={i} className="flex items-center justify-between p-3 md:p-6 bg-white border border-slate-100 rounded-xl md:rounded-2xl group hover:border-yt-red/30 hover:shadow-xl hover:shadow-black/[0.02] transition-all gap-3">
                       <div className="space-y-0.5">
-                        <div className="mono-text text-[6px] md:text-[7px] text-slate-400 uppercase tracking-widest">CONTAINER</div>
-                        <div className="text-xs md:text-xl font-black text-slate-900 group-hover:text-yt-red transition-colors uppercase">{item.qualityLabel || item.label || item.quality || 'Standard'}</div>
-                        <div className="mono-text text-[6px] md:text-[7px] text-slate-300 uppercase">{item.extension} • {item.contentLength ? (parseInt(item.contentLength)/1048576).toFixed(1) + 'MB' : 'Stream'}</div>
+                        <div className="mono-text text-[6px] md:text-[7px] text-slate-400 uppercase tracking-widest">QUALITY</div>
+                        <div className="text-xs md:text-xl font-black text-slate-900 group-hover:text-yt-red transition-colors uppercase">{item.qualityLabel || item.quality || '360p'}</div>
+                        <div className="mono-text text-[6px] md:text-[7px] text-slate-300 uppercase">{item.extension} • {item.contentLength ? (parseInt(item.contentLength)/1048576).toFixed(1) + 'MB' : 'Standard'}</div>
                       </div>
                       <button 
-                        onClick={() => startConversion(item.url)} 
+                        onClick={() => handleDownload(item.url, `${videoInfo.title}.mp4`)} 
                         className="btn-action px-4 py-2 md:px-8 md:py-4 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-sm"
                       >
                         {t.get}
