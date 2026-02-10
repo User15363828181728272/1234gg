@@ -53,7 +53,7 @@ export const Home: React.FC<HomeProps> = ({
     setTimeout(() => setShowCopied(false), 2000);
   };
 
-  /  // Memperbaiki filter media untuk hanya satu MP4 360p dan satu MP3 Audio
+   // Memperbaiki filter media untuk hanya satu MP4 360p dan satu MP3 Audio
   const filteredMedias = (() => {
     if (!videoInfo?.medias) return [];
 
